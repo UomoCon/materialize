@@ -19,7 +19,7 @@ class MaterializeAsset extends AssetBundle
     /**
      * @var string the directory that contains the source asset files for this asset bundle.
      */
-    public $sourcePath = '@npm/materialize/dist';
+    public $sourcePath = '@npm/materialize-css/dist';
 
     /**
      * @var array list of CSS files that this bundle contains.
