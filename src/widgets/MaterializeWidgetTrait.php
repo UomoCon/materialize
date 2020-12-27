@@ -86,7 +86,7 @@ trait MaterializeWidgetTrait
         if ($this->pluginOptions !== false) {
             $options = empty($this->pluginOptions) ? '{}' : Json::htmlEncode($this->pluginOptions);
 
-            $js = "document.addEventListener('DOMContentLoaded', function() {M.$name.init(document.querySelectorAll('$selector'), $options);});";
+            $js = "document.addEventListener('DOMContentLoaded', function() {M.$name.init(document.getElementById('$id').querySelectorAll('$selector'), $options);});";
             $view->registerJs($js, View::POS_END);
         }
 

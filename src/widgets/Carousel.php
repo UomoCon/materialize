@@ -8,6 +8,7 @@ namespace uomocon\materialize\widgets;
 
 use yii\helpers\Html;
 use yii\helpers\ArrayHelper;
+use yii\web\View;
 
 /**
  * Carousel is a robust and versatile component that can be an image slider or an item carousel with arbitrary HTML content.
@@ -42,6 +43,13 @@ use yii\helpers\ArrayHelper;
 class Carousel extends BaseWidget
 {
     /**
+     * @var array the HTML attributes for the carousel container tag.
+     * @see [yii\helpers\BaseHtml::renderTagAttributes()](http://www.yiiframework.com/doc-2.0/yii-helpers-basehtml.html#renderTagAttributes()-detail)
+     * for details on how attributes are being rendered.
+     */
+    public $carouselOptions = [];
+
+    /**
      * @var array the HTML attributes for each carousel item's tag.
      * These options will be merged with the individual item options.
      *
@@ -70,19 +78,61 @@ class Carousel extends BaseWidget
     public $items = [];
 
     /**
-     * @var array the plugin options
-     * @see https://materializecss.com/carousel.html#options
+     * @var int transition duration in milliseconds.
      */
-    public $pluginOptions = [
-        'duration'      => 200,
-        'dist'          => -100,
-        'shift'         => 0,
-        'padding'       => 0,
-        'numVisible'    => 5,
-        'fullWidth'     => false,
-        'indicators'    => false,
-        'noWrap'        => false,
-        'onCycleTo'     => null,
+    public $duration = 200;
+
+    /**
+     * @var int if 0, all items are the same size.
+     */
+    public $dist = -100;
+
+    /**
+     * @var int sets the spacing of the center item.
+     */
+    public $shift = 0;
+
+    /**
+     * @var int sets the padding between non center items.
+     */
+    public $padding = 0;
+
+    /**
+     * @var int sets the number of items visible.
+     */
+    public $numVisible = 5;
+
+    /**
+     * @var boolean whether the carousel has full width.
+     */
+    public $fullWidth = false;
+
+    /**
+     * @var boolean whether to show navigation indicators.
+     */
+    public $indicators = false;
+
+    /**
+     * @var boolean whether to start with first slide at the end.
+     */
+    public $noWrap = false;
+
+    /**
+     * @var function Callback for when a new slide is cycled to..
+     */
+    public $onCycleTo = null;
+
+        /**
+     * @var boolean whether to show navigation.
+     */
+    public $nav = false;
+
+        /**
+     * @var array options to navigation.
+     */
+    public $navOptions = [
+        ['tag' => 'span', 'content' => '<', 'options' => []],
+        ['tag' => 'span', 'content' => '>', 'options' => []]
     ];
 
     /**
@@ -92,12 +142,24 @@ class Carousel extends BaseWidget
     {
         parent::init();
 
-        Html::addCssClass($this->options, ['plugin' => 'carousel']);
-        if ($this->pluginOptions['fullWidth']) {
-            Html::addCssClass($this->options, ['fullwidth' => 'carousel-slider']);
+        Html::addCssClass($this->carouselOptions, ['plugin' => 'carousel']);
+        if ($this->fullWidth) {
+            Html::addCssClass($this->carouselOptions, ['fullwidth' => 'carousel-slider']);
         }
         
-        $this->registerPlugin('Carousel');
+        $this->pluginOptions = [
+            'duration'      => $this->duration,
+            'dist'          => $this->dist,
+            'shift'         => $this->shift,
+            'padding'       => $this->padding,
+            'numVisible'    => $this->numVisible,
+            'fullWidth'     => $this->fullWidth,
+            'indicators'    => $this->indicators,
+            'noWrap'        => $this->noWrap,
+            'onCycleTo'     => $this->onCycleTo,
+        ];
+
+        $this->registerPlugin('Carousel', '.carousel');
     }
 
     /**
@@ -107,8 +169,11 @@ class Carousel extends BaseWidget
     {
         $tag = ArrayHelper::remove($this->options, 'tag', 'div');
         $html[] = Html::beginTag($tag, $this->options);
+        $html[] = Html::beginTag('div', $this->carouselOptions);
         $html[] = $this->renderFixedItem();
         $html[] = $this->renderItems();
+        $html[] = Html::endTag('div');
+        $html[] = $this->renderNav();
         $html[] = Html::endTag($tag);
 
         return implode("\n", $html);
@@ -170,5 +235,51 @@ class Carousel extends BaseWidget
         Html::addCssClass($options, ['fixed-item' => 'carousel-fixed-item']);
 
         return Html::tag($tag, $content, $options);
+    }
+
+    /**
+     * Renders the optional nav
+     *
+     * @return string the nav's markup
+     */
+    protected function renderNav()
+    {
+        if (!$this->nav || count($this->navOptions) != 2) {
+            return '';
+        }
+
+        $html = [];
+        $id = $this->options['id'];
+
+        foreach ($this->navOptions as $count => $nav){
+            $tag = ArrayHelper::remove($nav, 'tag', 'span');
+            $content = ArrayHelper::remove($nav, 'content', '');
+            $options = ArrayHelper::remove($nav, 'options', []);
+            $options['id'] = ($count == 0)?"prev-{$id}":"next-{$id}";
+            Html::addCssStyle($options, 'cursor:pointer;position:relative');
+            $html[] = Html::tag($tag, $content, $options);
+        }
+
+        $style  = [
+            'width' => '100%', 
+            'text-align' => 'center', 
+            'bottom' => '5px',
+            'z-index' => 100
+        ];
+
+        $view = $this->getView();
+        $js[] = "document.addEventListener('DOMContentLoaded', function() {";
+        $js[] = "var prev = document.getElementById('prev-$id');";
+        $js[] = "var next = document.getElementById('next-$id');";
+        $js[] = "var elem = document.getElementById('$id').querySelector('.carousel');";
+        $js[] = "var instance = M.Carousel.getInstance(elem);";
+        $js[] = "prev.addEventListener(\"click\", function() {instance.prev();});";
+        $js[] = "next.addEventListener(\"click\", function() {instance.next();});";
+        $js[] = "});";
+    
+    
+        $view->registerJs(implode(" ", $js), View::POS_END);
+
+        return Html::tag('div', implode("\n", $html), ['class' => 'carousel-nav', 'style' => $style]);
     }
 }
