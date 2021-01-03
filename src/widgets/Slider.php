@@ -9,6 +9,7 @@ namespace uomocon\materialize\widgets;
 
 use yii\helpers\Html;
 use yii\helpers\ArrayHelper;
+use yii\web\View;
 
 /**
  * Slider renders a Materialize image slider with optional captions.
@@ -107,6 +108,19 @@ class Slider extends BaseWidget
     public $interval = 6000;
 
     /**
+     * @var boolean whether to show navigation.
+     */
+    public $nav = false;
+
+    /**
+     * @var array options to navigation.
+     */
+    public $navOptions = [
+        ['tag' => 'span', 'content' => '<', 'options' => []],
+        ['tag' => 'span', 'content' => '>', 'options' => []]
+    ];
+
+    /**
      * Initialize the widget.
      */
     public function init()
@@ -138,6 +152,7 @@ class Slider extends BaseWidget
         $html[] = Html::beginTag('div', $this->sliderOptions);
         $html[] = $this->renderSlides();
         $html[] = Html::endTag('div');
+        $html[] = $this->renderNav();
         $html[] = Html::endTag($tag);
 
         return implode("\n", $html);
@@ -205,4 +220,48 @@ class Slider extends BaseWidget
 
         return Html::tag('div', $content, $options);
     }
+
+    /**
+     * Renders the optional nav
+     *
+     * @return string the nav's markup
+     */
+    protected function renderNav()
+    {
+        if (!$this->nav || count($this->navOptions) != 2) {
+            return '';
+        }
+
+        $html = [];
+        $id = $this->options['id'];
+
+        foreach ($this->navOptions as $count => $nav){
+            $tag = ArrayHelper::remove($nav, 'tag', 'span');
+            $content = ArrayHelper::remove($nav, 'content', '');
+            $options = ArrayHelper::remove($nav, 'options', []);
+            $options['id'] = ($count == 0)?"prev-{$id}":"next-{$id}";
+            Html::addCssStyle($options, 'cursor:pointer;position:relative');
+            $html[] = Html::tag($tag, $content, $options);
+        }
+
+        $style  = [
+            'width' => '100%', 
+            'text-align' => 'center', 
+        ];
+
+        $view = $this->getView();
+        $js[] = "document.addEventListener('DOMContentLoaded', function() {";
+        $js[] = "var prev = document.getElementById('prev-$id');";
+        $js[] = "var next = document.getElementById('next-$id');";
+        $js[] = "var elem = document.getElementById('$id').querySelector('.slider');";
+        $js[] = "var instance = M.Slider.getInstance(elem);";
+        $js[] = "prev.addEventListener(\"click\", function() {instance.prev();});";
+        $js[] = "next.addEventListener(\"click\", function() {instance.next();});";
+        $js[] = "});";
+        
+        $view->registerJs(implode(" ", $js), View::POS_END);
+
+        return Html::tag('div', implode("\n", $html), ['class' => 'carousel-nav', 'style' => $style]);
+    }
+
 }
